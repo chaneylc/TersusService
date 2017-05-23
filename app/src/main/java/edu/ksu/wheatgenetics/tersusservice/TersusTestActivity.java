@@ -27,7 +27,8 @@ public class TersusTestActivity extends AppCompatActivity {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         final IntentFilter filter = new IntentFilter();
-        filter.addAction(TersusServiceConstants.BROADCAST_TERSUS_CONNECTED);
+        filter.addAction(TersusServiceConstants.BROADCAST_TERSUS_CONNECTION);
+        filter.addAction(TersusServiceConstants.BROADCAST_TERSUS_DISCOVERY);
         filter.addAction(TersusServiceConstants.BROADCAST_TERSUS_OUTPUT);
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 new ResponseReceiver(),
@@ -35,6 +36,13 @@ public class TersusTestActivity extends AppCompatActivity {
         );
 
         checkLocationPermission();
+    }
+
+    @Override
+    public void onDestroy() {
+
+        super.onDestroy();
+        stopService(new Intent(this, TersusService.class));
     }
 
     protected void checkLocationPermission() {
@@ -97,18 +105,25 @@ public class TersusTestActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
 
-            if (intent.hasExtra(TersusServiceConstants.TERSUS_CONNECTED)) {
-                final Boolean connected = ((Boolean) intent.getExtras()
-                        .get(TersusServiceConstants.TERSUS_CONNECTED));
-                if (connected.booleanValue())
-                    ((TextView) findViewById(R.id.tersusConnectionTextView)).setText("TersusOnline");
-            }
+            if (intent.hasExtra(TersusServiceConstants.TERSUS_CONNECTION)) {
+                final boolean connected = ((boolean) intent.getExtras()
+                        .get(TersusServiceConstants.TERSUS_CONNECTION));
+                ((TextView) findViewById(R.id.tersusConnectionTextView))
+                        .setText(connected ? "TersusOnline" : "TersusOffline");
 
+            }
            if (intent.hasExtra(TersusServiceConstants.TERSUS_OUTPUT)) {
                 ((TextView) findViewById(R.id.tersusOutputTextView)).setText(
                         ((TersusString) intent.getExtras()
                                 .get(TersusServiceConstants.TERSUS_OUTPUT)).toString()
                 );
+            }
+            if (intent.hasExtra(TersusServiceConstants.TERSUS_DISCOVERY)) {
+                final boolean discovering = (boolean) intent.getExtras()
+                        .get(TersusServiceConstants.TERSUS_DISCOVERY);
+                final String current = ((TextView) findViewById(R.id.tersusConnectionTextView)).getText().toString();
+                ((TextView) findViewById(R.id.tersusConnectionTextView))
+                        .setText(discovering ? current + " D" : current);
             }
         }
     }
