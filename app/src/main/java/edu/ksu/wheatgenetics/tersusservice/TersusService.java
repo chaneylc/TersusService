@@ -62,12 +62,16 @@ public class TersusService extends Service {
         @Override
         public void handleMessage(Message input) {
 
-            switch(input.what) {
-                case TersusServiceConstants.MESSAGE_READ:
-                    LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
-                            new Intent(TersusServiceConstants.BROADCAST_TERSUS_OUTPUT)
-                                    .putExtra(TersusServiceConstants.TERSUS_OUTPUT, new String((byte[]) input.obj))
-                    );
+            final TersusString ts = new TersusString((byte[]) input.obj);
+
+            if (!ts.toString().isEmpty()) {
+                switch (input.what) {
+                    case TersusServiceConstants.MESSAGE_READ:
+                        LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
+                                new Intent(TersusServiceConstants.BROADCAST_TERSUS_OUTPUT)
+                                        .putExtra(TersusServiceConstants.TERSUS_OUTPUT, ts)
+                        );
+                }
             }
         }
     };
@@ -191,6 +195,7 @@ public class TersusService extends Service {
                 // Unable to connect; close the socket and return.
                 try {
                     mmSocket.close();
+                    mBluetoothAdapter.startDiscovery();
                 } catch (IOException closeException) {
                     Log.e("CONNECT THREAD: RUN", "Could not close the client socket", closeException);
                 }
@@ -220,7 +225,8 @@ public class TersusService extends Service {
         private final OutputStream mmOutStream;
         private byte[] mmBuffer; // mmBuffer store for the stream
 
-        public ConnectedThread(BluetoothSocket socket) {
+        ConnectedThread(BluetoothSocket socket) {
+
             mmSocket = socket;
             InputStream tmpIn = null;
             OutputStream tmpOut = null;

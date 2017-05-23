@@ -101,13 +101,13 @@ public class TersusTestActivity extends AppCompatActivity {
                 final Boolean connected = ((Boolean) intent.getExtras()
                         .get(TersusServiceConstants.TERSUS_CONNECTED));
                 if (connected.booleanValue())
-                    ((TextView) findViewById(R.id.tersusConnectionTextView)).setText("Tersus Online");
+                    ((TextView) findViewById(R.id.tersusConnectionTextView)).setText("TersusOnline");
             }
 
            if (intent.hasExtra(TersusServiceConstants.TERSUS_OUTPUT)) {
                 ((TextView) findViewById(R.id.tersusOutputTextView)).setText(
-                        (String) intent.getExtras()
-                                .get(TersusServiceConstants.TERSUS_OUTPUT)
+                        ((TersusString) intent.getExtras()
+                                .get(TersusServiceConstants.TERSUS_OUTPUT)).toString()
                 );
             }
         }

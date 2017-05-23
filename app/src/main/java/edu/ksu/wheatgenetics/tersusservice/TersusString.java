@@ -9,19 +9,37 @@ import android.os.Parcelable;
 
 class TersusString implements Parcelable {
 
-    private String satSystem, UTC, latitude, latIndicator, longitude,
+    final String newline = System.getProperty("line.separator");
+
+    private String talkerIdentifier, sentenceIdentifier;
+
+    private String nmeaSentence, satSystem, UTC, latitude, latIndicator, longitude,
             longIndicator, qualityIndicator, numSat, HDOP, antennaAltitude,
             antennaAltUnits, geoidalSeparation, geoidalSeparationUnits,
-            ageOfDiffCorrection, diffRefStationID, checksum;
+            ageOfDiffCorrection, diffRefStationID, speedOverGround,
+            trackMadeGood, status, date, magneticVariation, magneticVariationIndicator,
+            T, M, N, K, trackDegreesT, trackDegreesM, speedKnots, speedKph, numMessages,
+            messageNum, satellitesInView, satelliteNum, elevationInDeg, azimuthInDegreesT,
+            SNR, selectionMode, mode, PDOP, VDOP, prn1, prn2, prn3, prn4, prn5, prn6,
+            prn7, prn8, prn9, prn10, prn11, prn12;
 
 
     TersusString(byte[] bytes) {
 
-        this.satSystem = this.UTC = this.latitude = this.latIndicator =
-                this.longitude = this.longIndicator = this.qualityIndicator =
-                        this.numSat = this.HDOP = this.antennaAltitude = this.antennaAltUnits =
-                                this.geoidalSeparationUnits = this.geoidalSeparation = this.ageOfDiffCorrection =
-                                        this.diffRefStationID = "";
+        talkerIdentifier = sentenceIdentifier = "";
+
+        nmeaSentence = satSystem = UTC
+                = latitude = latIndicator = longitude
+                = longIndicator = qualityIndicator = numSat
+                = HDOP = antennaAltitude = antennaAltUnits
+                = geoidalSeparationUnits = geoidalSeparation = ageOfDiffCorrection
+                = diffRefStationID = speedOverGround = trackMadeGood
+                = status = date = magneticVariation = magneticVariationIndicator
+                = T = M = N = K = trackDegreesT = trackDegreesM = speedKnots = speedKph
+                = numMessages = messageNum = satellitesInView = satelliteNum
+                = elevationInDeg = azimuthInDegreesT = SNR = selectionMode = mode
+                = PDOP = VDOP = prn1 = prn2 = prn3 = prn4 = prn5 = prn6 = prn7 = prn8
+                = prn9 = prn10 = prn11 = prn12 = "";
 
         String nmeaChunk = new String(bytes);
 
@@ -31,6 +49,7 @@ class TersusString implements Parcelable {
         }
 
         final String[] chunks = nmeaChunk.split("\\r");
+
         if (chunks.length >= 1) {
             nmeaChunk = chunks[0];
             final String[] tokens = nmeaChunk.split("\\*");
@@ -40,12 +59,11 @@ class TersusString implements Parcelable {
                 //the final token should be the checksum starting with a '*'
                 final char[] characters = nmeaChunk.toCharArray();
                 //verify the checksum
+                //Tersus GNSS documentation is incorrect! begin checksum with '$'
                 int actualChecksum = '$';
                 for (char c : characters) {
                     actualChecksum ^= c;
                 }
-                //Tersus GNSS documentation is incorrect! xor '$' finally to sum the correct checksum
-                //actualChecksum ^= '$';
                 if (actualChecksum == checksum) {
                     parseNmea(nmeaChunk);
                 }
@@ -55,53 +73,119 @@ class TersusString implements Parcelable {
 
     private TersusString(Parcel source) {
 
-        this.satSystem = source.readString();
-        this.UTC =  source.readString();
-        this.latitude =  source.readString();
-        this.latIndicator =  source.readString();
-        this.longitude =  source.readString();
-        this.longIndicator =  source.readString();
-        this.qualityIndicator =  source.readString();
-        this.numSat =  source.readString();
-        this.HDOP =  source.readString();
-        this.antennaAltitude =  source.readString();
-        this.antennaAltUnits =  source.readString();
-        this.geoidalSeparation =  source.readString();
-        this.geoidalSeparationUnits =  source.readString();
-        this.ageOfDiffCorrection = source.readString();
-        this.diffRefStationID =  source.readString();
-        this.checksum =  source.readString();
+        final String[] data = source.createStringArray();
+        if (data.length >= 2) {
+            this.talkerIdentifier = data[0];
+            this.sentenceIdentifier = data[1];
+
+            switch (talkerIdentifier) {
+
+                case "GP":
+                    this.satSystem="GPS";
+                    break;
+
+                case "GN":
+                    this.satSystem="GLONASS";
+                    break;
+
+                default:
+                    throw new UnsupportedOperationException("Proprietary sentence detected.");
+            }
+
+            switch (sentenceIdentifier) {
+                case "GGA": {
+                    buildGGAString(data);
+                    break;
+                }
+                case "RMC": {
+                    buildRMCString(data);
+                    break;
+                }
+                case "VTG": {
+                    buildVTGString(data);
+                    break;
+                }
+                case "GSA": {
+                    buildGSAString(data);
+                    break;
+                }
+                case "GSV": {
+                    buildGSVString(data);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
     }
 
     private void parseNmea(String rawString) {
 
         if (rawString.contains(",")) {
-            String[] tokens = rawString.split(",", -1);
-            if (tokens.length >= 15) {
-                this.satSystem = tokens[0] == null ? "" : tokens[0];
-                this.UTC = tokens[1] == null ? "" : tokens[1];
-                this.latitude = tokens[2] == null ? "" : tokens[2];
-                this.latIndicator = tokens[3] == null ? "" : tokens[3];
-                this.longitude = tokens[4] == null ? "" : tokens[4];
-                this.longIndicator = tokens[5] == null ? "" : tokens[5];
-                this.qualityIndicator = tokens[6] == null ? "" : tokens[6];
-                this.numSat = tokens[7] == null ? "" : tokens[7];
-                this.HDOP = tokens[8] == null ? "" : tokens[8];
-                this.antennaAltitude = tokens[9] == null ? "" : tokens[9];
-                this.antennaAltUnits = tokens[10] == null ? "" : tokens[10];
-                this.geoidalSeparation = tokens[11] == null ? "" : tokens[11];
-                this.geoidalSeparationUnits = tokens[12] == null ? "" : tokens[12];
-                this.ageOfDiffCorrection = tokens[13] == null ? "" : tokens[13];
-                this.diffRefStationID = tokens[14] == null ? "" : tokens[14];
-                //this.checksum = tokens[15];
+            final String[] tokens = rawString.split(",", -1);
+            talkerIdentifier = tokens[0].substring(0, 2);
+            sentenceIdentifier = tokens[0].substring(2);
+
+            switch (talkerIdentifier) {
+
+                case "GP":
+                    this.satSystem="GPS";
+                    break;
+
+                case "GN":
+                    this.satSystem="GLONASS";
+                    break;
+
+                default:
+                    throw new UnsupportedOperationException("Proprietary sentence detected.");
+            }
+
+            switch (sentenceIdentifier) {
+                case "GGA": {
+                    buildGGAString(tokens);
+                    break;
+                }
+                case "RMC": {
+                    buildRMCString(tokens);
+                    break;
+                }
+                case "VTG": {
+                    buildVTGString(tokens);
+                    break;
+                }
+                case "GSA": {
+                    buildGSAString(tokens);
+                    break;
+                }
+                case "GSV": {
+                    buildGSVString(tokens);
+                    break;
+                }
+                default:
+                    break;
             }
         }
     }
 
-    @Override
-    public String toString() {
+    private void buildGGAString(String[] tokens) {
 
-        final String newline = System.getProperty("line.separator");
+        if (tokens.length >= 15) {
+            this.UTC = tokens[1] == null ? "" : tokens[1];
+            this.latitude = tokens[2] == null ? "" : tokens[2];
+            this.latIndicator = tokens[3] == null ? "" : tokens[3];
+            this.longitude = tokens[4] == null ? "" : tokens[4];
+            this.longIndicator = tokens[5] == null ? "" : tokens[5];
+            this.qualityIndicator = tokens[6] == null ? "" : tokens[6];
+            this.numSat = tokens[7] == null ? "" : tokens[7];
+            this.HDOP = tokens[8] == null ? "" : tokens[8];
+            this.antennaAltitude = tokens[9] == null ? "" : tokens[9];
+            this.antennaAltUnits = tokens[10] == null ? "" : tokens[10];
+            this.geoidalSeparation = tokens[11] == null ? "" : tokens[11];
+            this.geoidalSeparationUnits = tokens[12] == null ? "" : tokens[12];
+            this.ageOfDiffCorrection = tokens[13] == null ? "" : tokens[13];
+            this.diffRefStationID = tokens[14] == null ? "" : tokens[14];
+        }
+
         final StringBuilder sb = new StringBuilder();
 
         sb.append("SatelliteSystem: ");
@@ -190,7 +274,287 @@ class TersusString implements Parcelable {
         else sb.append("NONE");
         sb.append(newline);
 
-        return sb.toString();
+        this.nmeaSentence = sb.toString();
+    }
+
+    private void buildRMCString(String[] tokens) {
+
+        if (tokens.length >= 12) {
+            this.UTC = tokens[1] == null ? "" : tokens[1];
+            this.status = tokens[2] == null ? "" : tokens[2];
+            this.latitude = tokens[3] == null ? "" : tokens[3];
+            this.latIndicator = tokens[4] == null ? "" : tokens[4];
+            this.longitude = tokens[5] == null ? "" : tokens[5];
+            this.longIndicator = tokens[6] == null ? "" : tokens[6];
+            this.speedOverGround = tokens[7] == null ? "" : tokens[7];
+            this.trackMadeGood = tokens[8] == null ? "" : tokens[8];
+            this.date = tokens[9] == null ? "" : tokens[9];
+            this.magneticVariation = tokens[10] == null ? "" : tokens[10];
+            this.magneticVariationIndicator = tokens[11] == null ? "" : tokens[11];
+        }
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SatelliteSystem: ");
+        sb.append(this.satSystem.isEmpty() ? "NONE" : this.satSystem);
+        sb.append(newline);
+
+        sb.append("UTC: ");
+        sb.append(this.UTC.isEmpty() ? "NONE": this.UTC);
+        sb.append(newline);
+
+        sb.append("Status: ");
+        sb.append(this.status.isEmpty() ? "NONE" : this.status);
+        sb.append(newline);
+
+        sb.append("Latitude: ");
+        if (!latIndicator.isEmpty() && !latitude.isEmpty()) {
+            if (latIndicator.equals("S")) {
+                sb.append("-");
+                sb.append(this.latitude);
+            } else sb.append(this.latitude);
+        } else sb.append("NONE");
+        sb.append(newline);
+
+        sb.append("Longitude: ");
+        if (!longIndicator.isEmpty() && !longitude.isEmpty()) {
+            if (longIndicator.equals("W")) {
+                sb.append("-");
+                sb.append(this.longitude);
+            } else sb.append(this.longitude);
+        } else sb.append("NONE");
+        sb.append(newline);
+
+        sb.append("Speed over ground (Knots): ");
+        sb.append(speedOverGround.isEmpty() ? "NONE" : speedOverGround);
+        sb.append(newline);
+
+        sb.append("Track made good (degrees T): ")
+                .append(trackMadeGood.isEmpty() ? "NONE" : trackMadeGood);
+        sb.append(newline);
+
+        sb.append("Date: ");
+        sb.append(date.isEmpty() ? "NONE" : date);
+        sb.append(newline);
+
+        sb.append("Magnetic Variation: ");
+        if (!magneticVariationIndicator.isEmpty() && !magneticVariation.isEmpty()) {
+            if (magneticVariationIndicator.equals("W")) {
+                sb.append("-");
+                sb.append(this.magneticVariation);
+            } else sb.append(this.magneticVariation);
+        } else sb.append("NONE");
+        sb.append(newline);
+
+        this.nmeaSentence = sb.toString();
+    }
+
+    private void buildVTGString(String[] tokens) {
+
+        if (tokens.length >= 9) {
+            this.trackDegreesT = tokens[1] == null ? "" : tokens[1];
+            this.T = tokens[2] == null ? "" : tokens[2];
+            this.trackDegreesM = tokens[3] == null ? "" : tokens[3];
+            this.M = tokens[4] == null ? "" : tokens[4];
+            this.speedKnots = tokens[5] == null ? "" : tokens[5];
+            this.N = tokens[6] == null ? "" : tokens[6];
+            this.speedKph = tokens[7] == null ? "" : tokens[7];
+            this.K = tokens[8] == null ? "" : tokens[8];
+        }
+
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append("Satellite System: ");
+        sb.append(satSystem.isEmpty() ? "NONE" : satSystem);
+        sb.append(newline);
+
+        sb.append("Track Degrees (True): ");
+        sb.append(trackDegreesT.isEmpty() ? "NONE" : trackDegreesT);
+        sb.append(newline);
+
+        sb.append("T: ");
+        sb.append(T.isEmpty() ? "NONE" : T);
+        sb.append(newline);
+
+        sb.append("Track Degrees (Magnetic): ");
+        sb.append(trackDegreesM.isEmpty() ? "NONE" : trackDegreesM);
+        sb.append(newline);
+
+        sb.append("M: ");
+        sb.append(M.isEmpty() ? "NONE" : M);
+        sb.append(newline);
+
+        sb.append("Speed Knots: ");
+        sb.append(speedKnots.isEmpty() ? "NONE" : speedKnots);
+        sb.append(newline);
+
+        sb.append("N: ");
+        sb.append(N.isEmpty() ? "NONE" : N);
+        sb.append(newline);
+
+        sb.append("Speed Km/h: ");
+        sb.append(speedKph.isEmpty() ? "NONE" : speedKph);
+        sb.append(newline);
+
+        sb.append("K: ");
+        sb.append(K.isEmpty() ? "NONE" : K);
+        sb.append(newline);
+
+        nmeaSentence = sb.toString();
+    }
+
+    private void buildGSVString(String[] tokens) {
+
+        if (tokens.length >= 8) {
+            this.numMessages = tokens[1] == null ? "" : tokens[1];
+            this.messageNum = tokens[2] == null ? "" : tokens[2];
+            this.satellitesInView = tokens[3] == null ? "" : tokens[3];
+            this.satelliteNum = tokens[4] == null ? "" : tokens[4];
+            this.elevationInDeg = tokens[5] == null ? "" : tokens[5];
+            this.azimuthInDegreesT = tokens[6] == null ? "" : tokens[6];
+            this.SNR = tokens[7] == null ? "" : tokens[7];
+        }
+
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append("Satellite System: ");
+        sb.append(satSystem.isEmpty() ? "NONE" : satSystem);
+        sb.append(newline);
+
+        sb.append("Total messages: ");
+        sb.append(numMessages.isEmpty() ? "NONE" : numMessages);
+        sb.append(newline);
+
+        sb.append("Message number: ");
+        sb.append(messageNum.isEmpty() ? "NONE" : messageNum);
+        sb.append(newline);
+
+        sb.append("Satellites in view: ");
+        sb.append(satellitesInView.isEmpty() ? "NONE" : satellitesInView);
+        sb.append(newline);
+
+        sb.append("Satellite number: ");
+        sb.append(satelliteNum.isEmpty() ? "NONE" : satelliteNum);
+        sb.append(newline);
+
+        sb.append("Elevation in degrees: ");
+        sb.append(elevationInDeg.isEmpty() ? "NONE" : elevationInDeg);
+        sb.append(newline);
+
+        sb.append("Azimuth in degrees to True: ");
+        sb.append(azimuthInDegreesT.isEmpty() ? "NONE" : azimuthInDegreesT);
+        sb.append(newline);
+
+        sb.append("SNR in dB: ");
+        sb.append(SNR.isEmpty() ? "NONE" : SNR);
+        sb.append(newline);
+
+        nmeaSentence = sb.toString();
+    }
+
+    private void buildGSAString(String[] tokens) {
+
+        if (tokens.length >= 18) {
+            selectionMode = tokens[1] == null ? "" : tokens[1];
+            mode = tokens[2] == null ? "" : tokens[2];
+            prn1 = tokens[3] == null ? "" : tokens[3];
+            prn2 = tokens[4] == null ? "" : tokens[4];
+            prn3 = tokens[5] == null ? "" : tokens[5];
+            prn4 = tokens[6] == null ? "" : tokens[6];
+            prn5 = tokens[7] == null ? "" : tokens[7];
+            prn6 = tokens[8] == null ? "" : tokens[8];
+            prn7 = tokens[9] == null ? "" : tokens[9];
+            prn8 = tokens[10] == null ? "" : tokens[10];
+            prn9 = tokens[11] == null ? "" : tokens[11];
+            prn10 = tokens[12] == null ? "" : tokens[12];
+            prn11 = tokens[13] == null ? "" : tokens[13];
+            prn12 = tokens[14] == null ? "" : tokens[14];
+            PDOP = tokens[15] == null ? "" : tokens[15];
+            HDOP = tokens[16] == null ? "" : tokens[16];
+            VDOP = tokens[17] == null ? "" : tokens[17];
+        }
+
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append("Satellite System: ");
+        sb.append(satSystem.isEmpty() ? "" : satSystem);
+        sb.append(newline);
+
+        sb.append("Selection Mode: ");
+        sb.append(selectionMode.isEmpty() ? "" : selectionMode);
+        sb.append(newline);
+
+        sb.append("Mode: ");
+        sb.append(mode.isEmpty() ? "" : mode);
+        sb.append(newline);
+
+        sb.append("PRN1: ");
+        sb.append(prn1.isEmpty() ? "" : prn1);
+        sb.append(newline);
+
+        sb.append("PRN2: ");
+        sb.append(prn2.isEmpty() ? "" : prn2);
+        sb.append(newline);
+
+        sb.append("PRN3: ");
+        sb.append(prn3.isEmpty() ? "" : prn3);
+        sb.append(newline);
+
+        sb.append("PRN4: ");
+        sb.append(prn4.isEmpty() ? "" : prn4);
+        sb.append(newline);
+
+        sb.append("PRN5: ");
+        sb.append(prn5.isEmpty() ? "" : prn5);
+        sb.append(newline);
+
+        sb.append("PRN6: ");
+        sb.append(prn6.isEmpty() ? "" : prn6);
+        sb.append(newline);
+
+        sb.append("PRN7: ");
+        sb.append(prn7.isEmpty() ? "" : prn7);
+        sb.append(newline);
+
+        sb.append("PRN8: ");
+        sb.append(prn8.isEmpty() ? "" : prn8);
+        sb.append(newline);
+
+        sb.append("PRN9: ");
+        sb.append(prn9.isEmpty() ? "" : prn9);
+        sb.append(newline);
+
+        sb.append("PRN10: ");
+        sb.append(prn10.isEmpty() ? "" : prn10);
+        sb.append(newline);
+
+        sb.append("PRN11: ");
+        sb.append(prn11.isEmpty() ? "" : prn11);
+        sb.append(newline);
+
+        sb.append("PRN12: ");
+        sb.append(prn12.isEmpty() ? "" : prn12);
+        sb.append(newline);
+
+        sb.append("PDOP: ");
+        sb.append(PDOP.isEmpty() ? "" : PDOP);
+        sb.append(newline);
+
+        sb.append("HDOP: ");
+        sb.append(HDOP.isEmpty() ? "" : HDOP);
+        sb.append(newline);
+
+        sb.append("VDOP: ");
+        sb.append(VDOP.isEmpty() ? "" : VDOP);
+        sb.append(newline);
+
+        nmeaSentence = sb.toString();
+    }
+
+    @Override
+    public String toString() {
+
+        return this.nmeaSentence;
+
     }
 
     @Override
@@ -200,13 +564,44 @@ class TersusString implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeStringArray(new String[] {
-                this.satSystem, this.UTC, this.latitude, this.latIndicator,
-                this.longitude, this.longIndicator, this.qualityIndicator,
-                this.numSat, this.HDOP, this.antennaAltitude, this.antennaAltUnits,
-                this.geoidalSeparation, this.geoidalSeparationUnits, this.ageOfDiffCorrection,
-                this.diffRefStationID, this.checksum
-        });
+
+        String[] data;
+        switch (sentenceIdentifier) {
+            case "GGA":
+                data = new String[] { talkerIdentifier, sentenceIdentifier,
+                        satSystem, UTC, latitude, latIndicator, longitude,
+                        longIndicator, qualityIndicator, numSat, HDOP, antennaAltitude,
+                        antennaAltUnits, geoidalSeparation, geoidalSeparationUnits,
+                        ageOfDiffCorrection, diffRefStationID
+                };
+                break;
+            case "RMC":
+                data = new String[] { talkerIdentifier, sentenceIdentifier,
+                        satSystem, UTC, status, latitude, latIndicator,
+                    longitude, longIndicator, speedOverGround, trackMadeGood, date,
+                    magneticVariation, magneticVariationIndicator};
+                break;
+            case "VTG":
+                data = new String[] { talkerIdentifier, sentenceIdentifier,
+                        satSystem, trackDegreesT, T, trackDegreesM, M,
+                    speedKnots, N, speedKph, K };
+                break;
+            case "GSA":
+                data = new String[] { talkerIdentifier, sentenceIdentifier,
+                satSystem, selectionMode, mode, prn1, prn2, prn3, prn4, prn5,
+                prn6, prn7, prn8, prn9, prn10, prn11, prn12, PDOP, HDOP, VDOP};
+                break;
+            case "GSV":
+                data = new String[] { talkerIdentifier, sentenceIdentifier,
+                        satSystem, numMessages, messageNum, satellitesInView,
+                    satelliteNum, elevationInDeg, azimuthInDegreesT, SNR };
+                break;
+            default:
+                data = null;
+                break;
+        }
+
+        dest.writeStringArray(data);
     }
 
     public static final Parcelable.Creator<TersusString> CREATOR
@@ -222,68 +617,4 @@ class TersusString implements Parcelable {
             return new TersusString[size];
         }
     };
-
-    public String getAgeOfDiffCorrection() {
-        return ageOfDiffCorrection;
-    }
-
-    public String getDiffRefStationID() {
-        return diffRefStationID;
-    }
-
-    public String getChecksum() {
-        return checksum;
-    }
-
-    public String getAntennaAltUnits() {
-        return antennaAltUnits;
-    }
-
-    public String getGeoidalSeparation() {
-        return geoidalSeparation;
-    }
-
-    public String getGeoidalSeparationUnits() {
-        return geoidalSeparationUnits;
-    }
-
-    public String getAntennaAltitude() {
-        return antennaAltitude;
-    }
-
-    public String getHDOP() {
-        return HDOP;
-    }
-
-    public String getNumSat() {
-        return numSat;
-    }
-
-    public String getQualityIndicator() {
-        return qualityIndicator;
-    }
-
-    public String getLongIndicator() {
-        return longIndicator;
-    }
-
-    public String getUTC() {
-        return UTC;
-    }
-
-    public String getLatitude() {
-        return latitude;
-    }
-
-    public String getLatIndicator() {
-        return latIndicator;
-    }
-
-    public String getLongitude() {
-        return longitude;
-    }
-
-    public String getSatSystem() {
-        return satSystem;
-    }
 }
