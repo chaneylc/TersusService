@@ -19,9 +19,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class TersusService extends Service {
 
+    private Timer pairTimer = new Timer("hexTronik Pair", true);
     BluetoothAdapter mBluetoothAdapter;
     BluetoothDevice mDevice;
 
@@ -32,28 +36,49 @@ public class TersusService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (mBluetoothAdapter != null) {
 
-            discover(true);
-
-        }
-
-        final IntentFilter bt_intent = new IntentFilter();
-        bt_intent.addAction(BluetoothDevice.ACTION_FOUND);
-        registerReceiver(mReceiver, bt_intent);
+        //begin pairing timer
+        resetPairedTimer();
 
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void discover(boolean flag) {
+    private void findPairedBTDevice() {
 
-        if (flag) mBluetoothAdapter.startDiscovery();
-        else mBluetoothAdapter.cancelDiscovery();
+        if (mBluetoothAdapter != null) {
 
-        LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
-                new Intent(TersusServiceConstants.BROADCAST_TERSUS_DISCOVERY)
-                        .putExtra(TersusServiceConstants.TERSUS_DISCOVERY, flag)
-        );
+            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+            if (!pairedDevices.isEmpty()) {
+                for (BluetoothDevice bd : pairedDevices) {
+                    //TODO change this with settings name
+                    if (bd.getName().startsWith("HB")) {
+                        mDevice = bd;
+                        try {
+                            new ConnectThread(mDevice).start();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private class PairTask extends TimerTask {
+
+        @Override
+        public void run() {
+
+            findPairedBTDevice();
+        }
+    }
+
+    private void resetPairedTimer() {
+
+        pairTimer.purge();
+        pairTimer.cancel();
+        pairTimer = new Timer("hexTronik Pair", true);
+        pairTimer.schedule(new PairTask(), 1000, 5000);
     }
 
     @Override
@@ -87,65 +112,13 @@ public class TersusService extends Service {
         }
     };
 
-    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            final String action = intent.getAction();
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-
-                final BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-                if (device != null && device.getName() != null && device.getAddress() != null) {
-
-                    String deviceName = device.getName();
-                    //String deviceHardwareAddress = device.getAddress();
-
-                    if (deviceName.startsWith("HB")) {//default name for Tersus BT, maybe add this as setting
-
-                       /* if (android.os.Build.VERSION.SDK_INT >= 19) {
-
-                            //the following two lines only work if the app is installed in system/priv-apps
-                            //which requires manual installation, the two lines automatically pair with the Tersus
-                            //otherwise the user must enter the default pin number when prompted
-                            /** device.setPin("1234".getBytes());
-                             device.setPairingConfirmation(true);
-                        }/*/
-                        try {
-
-                            Method method = device.getClass().getMethod("createBond", (Class[]) null);
-                            method.invoke(device, (Object[]) null);
-
-                            LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
-                                    new Intent(TersusServiceConstants.BROADCAST_TERSUS_CONNECTION)
-                                            .putExtra(TersusServiceConstants.TERSUS_CONNECTION, true)
-                            );
-
-                            //connect thread creats rfcomm connection, and cancels bt discovery
-                            new ConnectThread(device).start();
-
-                            // Toast.makeText(MainActivity.this, "Successfully paired with Tersus.", Toast.LENGTH_LONG).show();
-
-                        } catch (Exception e) {
-
-                            // Toast.makeText(MainActivity.this, "Something went wrong connecting to Tersus.", Toast.LENGTH_LONG).show();
-
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-        }
-    };
-
     /* Thread that creates hexTronik socket and given a paired HB device */
     private class ConnectThread extends Thread {
 
         private final BluetoothSocket mmSocket;
         private final BluetoothDevice mmDevice;
 
-        public ConnectThread(BluetoothDevice device) {
+        ConnectThread(BluetoothDevice device) {
             // Use a temporary object that is later assigned to mmSocket
             // because mmSocket is final.
             BluetoothSocket tmp = null;
@@ -157,13 +130,13 @@ public class TersusService extends Service {
                 tmp = device.createRfcommSocketToServiceRecord(device.getUuids()[0].getUuid());
             } catch (IOException e) {
                 Log.e("CONNECT THREAD", "Socket's create() method failed", e);
+                resetPairedTimer();
             }
+
             mmSocket = tmp;
         }
 
         public void run() {
-            // Cancel discovery because it otherwise slows down the connection.
-            discover(false);
 
             try {
                 // Connect to the remote device through the socket. This call blocks
@@ -172,14 +145,17 @@ public class TersusService extends Service {
             } catch (IOException connectException) {
                 // Unable to connect; close the socket and return.
                 try {
+                    resetPairedTimer();
                     mmSocket.close();
-                    discover(true);
                 } catch (IOException closeException) {
                     Log.e("CONNECT THREAD: RUN", "Could not close the client socket", closeException);
                 }
                 return;
             }
 
+
+            //cancel the pair timer
+            pairTimer.cancel();
             // The connection attempt succeeded. Perform work associated with
             // the connection in a separate thread.
             new ConnectedThread(mmSocket).start();
@@ -198,6 +174,7 @@ public class TersusService extends Service {
     /* thread that communicates over the hexTronik socket created by ConnectThread */
     /* sends data to the Service handler */
     private class ConnectedThread extends Thread {
+
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
@@ -214,16 +191,22 @@ public class TersusService extends Service {
             try {
                 tmpIn = socket.getInputStream();
             } catch (IOException e) {
-                Log.e("CONNECTED THREAD: input", "Error occurred when creating input stream", e);
+                Log.e("CONNECTED THREAD: in", "Error occurred when creating input stream", e);
             }
             try {
                 tmpOut = socket.getOutputStream();
             } catch (IOException e) {
-                Log.e("CONECTED THREAD: output", "Error occurred when creating output stream", e);
+                Log.e("CONNECTED THREAD: out", "Error occurred when creating output stream", e);
             }
 
             mmInStream = tmpIn;
             mmOutStream = tmpOut;
+
+            //broadcast that the device is connected
+            LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
+                    new Intent(TersusServiceConstants.BROADCAST_TERSUS_CONNECTION)
+                            .putExtra(TersusServiceConstants.TERSUS_CONNECTION, true)
+            );
         }
 
         public void run() {
@@ -236,21 +219,23 @@ public class TersusService extends Service {
                 try {
                     // Read from the InputStream.
                     numBytes = mmInStream.read(mmBuffer);
-                    // Send the obtained bytes to the UI activity.
 
+                    // Send the obtained bytes to the UI activity.
                     Message readMsg = mHandler.obtainMessage(
                             TersusServiceConstants.MESSAGE_READ, numBytes, -1,
                             mmBuffer);
                     readMsg.sendToTarget();
 
                 } catch (IOException e) {
+
                     Log.d("CONNECTED THREAD: run", "Input stream was disconnected", e);
+
+                    resetPairedTimer();
 
                     LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
                             new Intent(TersusServiceConstants.BROADCAST_TERSUS_CONNECTION)
                                     .putExtra(TersusServiceConstants.TERSUS_CONNECTION, false)
                     );
-                    discover(true);
 
                     break;
                 }
