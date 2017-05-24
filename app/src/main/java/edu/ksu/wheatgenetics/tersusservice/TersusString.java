@@ -43,29 +43,31 @@ class TersusString implements Parcelable {
 
         String nmeaChunk = new String(bytes);
 
-        //sometimes the transmission does not contain the $
-        if (nmeaChunk.startsWith("$")) {
-            nmeaChunk = nmeaChunk.substring(1);
-        }
-
-        final String[] chunks = nmeaChunk.split("\\r");
+        final String[] chunks = nmeaChunk.split("\\r\\n");
 
         if (chunks.length >= 1) {
-            nmeaChunk = chunks[0];
+
+            //iterate through chunks and find a logged nmea sentence (begins with $)
+            for(String chunk : chunks) {
+                nmeaChunk = chunk;
+                if (nmeaChunk.startsWith("$"))
+                    break;
+            }
+
+            //split nmea sentence between the checksum and the tokens
             final String[] tokens = nmeaChunk.split("\\*");
             if (tokens.length == 2) {
-                nmeaChunk = tokens[0].substring(0, tokens[0].length());//.subSequence(0, tokens[0].length() - 1).toString();
                 final int checksum = Integer.valueOf(tokens[1]);
                 //the final token should be the checksum starting with a '*'
-                final char[] characters = nmeaChunk.toCharArray();
+                final char[] characters = tokens[0].toCharArray();
                 //verify the checksum
                 //Tersus GNSS documentation is incorrect! begin checksum with '$'
-                int actualChecksum = '$';
+                int actualChecksum = 0;
                 for (char c : characters) {
                     actualChecksum ^= c;
                 }
                 if (actualChecksum == checksum) {
-                    parseNmea(nmeaChunk);
+                    parseNmea(tokens[0].substring(1));
                 }
             }
         }

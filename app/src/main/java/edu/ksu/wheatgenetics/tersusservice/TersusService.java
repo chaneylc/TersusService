@@ -8,24 +8,26 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.ResultReceiver;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class TersusService extends Service {
 
-    private Timer pairTimer = new Timer("hexTronik Pair", true);
+    private Timer mTimer = new Timer("hexTronik Pair", true);
+    private ConnectedThread mConnectedThread;
+    private TersusReceiver mReceiver;
     BluetoothAdapter mBluetoothAdapter;
     BluetoothDevice mDevice;
 
@@ -36,6 +38,13 @@ public class TersusService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        mConnectedThread = null;
+        mReceiver = new TersusReceiver();
+
+        //setup broadcast receiver to accept commands from activities
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(TersusServiceConstants.TERSUS_COMMAND);
+        registerReceiver(mReceiver, intentFilter);
 
         //begin pairing timer
         resetPairedTimer();
@@ -75,15 +84,16 @@ public class TersusService extends Service {
 
     private void resetPairedTimer() {
 
-        pairTimer.purge();
-        pairTimer.cancel();
-        pairTimer = new Timer("hexTronik Pair", true);
-        pairTimer.schedule(new PairTask(), 1000, 5000);
+        mTimer.purge();
+        mTimer.cancel();
+        mTimer = new Timer("hexTronik Pair", true);
+        mTimer.schedule(new PairTask(), 1000, 5000);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(mReceiver);
     }
 
     @Override
@@ -107,6 +117,8 @@ public class TersusService extends Service {
                                         .putExtra(TersusServiceConstants.TERSUS_OUTPUT, ts)
                         );
                     }
+                    break;
+                case TersusServiceConstants.MESSAGE_AVG_BASE:
                     break;
             }
         }
@@ -155,10 +167,12 @@ public class TersusService extends Service {
 
 
             //cancel the pair timer
-            pairTimer.cancel();
+            mTimer.cancel();
             // The connection attempt succeeded. Perform work associated with
             // the connection in a separate thread.
-            new ConnectedThread(mmSocket).start();
+            mConnectedThread = new ConnectedThread(mmSocket);
+            mConnectedThread.start();
+
         }
 
         // Closes the client socket and causes the thread to finish.
@@ -243,27 +257,27 @@ public class TersusService extends Service {
         }
 
         // Can this be used to program Tersus...? e.g write("log com1 gpgg ontime 0.2".getBytes())
-      /*  public void write(byte[] bytes) {
+        public void write(byte[] bytes) {
             try {
                 mmOutStream.write(bytes);
 
                 // Share the sent message with the UI activity.
                 Message writtenMsg = mHandler.obtainMessage(
-                        MessageConstants.MESSAGE_WRITE, -1, -1, mmBuffer);
+                        TersusServiceConstants.MESSAGE_WRITE, -1, -1, mmBuffer);
                 writtenMsg.sendToTarget();
             } catch (IOException e) {
                 Log.e("CONNECTED THREAD : w", "Error occurred when sending data", e);
 
                 // Send a failure message back to the activity.
-                Message writeErrorMsg =
-                        mHandler.obtainMessage(MessageConstants.MESSAGE_TOAST);
+                /*Message writeErrorMsg =
+                        mHandler.obtainMessage(TersusServiceConstants.MESSAGE_TOAST);
                 Bundle bundle = new Bundle();
                 bundle.putString("toast",
                         "Couldn't send data to the other device");
                 writeErrorMsg.setData(bundle);
-                mHandler.sendMessage(writeErrorMsg);
+                mHandler.sendMessage(writeErrorMsg);*/
             }
-        }*/
+        }
 
         // Call this method from the main activity to shut down the connection.
         public void cancel() {
@@ -271,6 +285,21 @@ public class TersusService extends Service {
                 mmSocket.close();
             } catch (IOException e) {
                 Log.e("CONNECTED : cancel", "Could not close the connect socket", e);
+            }
+        }
+    }
+
+    public class TersusReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            if (intent.hasExtra(TersusServiceConstants.TERSUS_COMMAND_STRING)) {
+
+                final String command = intent.getStringExtra(TersusServiceConstants.TERSUS_COMMAND_STRING);
+                if (mConnectedThread != null) {
+                    mConnectedThread.write(command.getBytes());
+                }
             }
         }
     }
