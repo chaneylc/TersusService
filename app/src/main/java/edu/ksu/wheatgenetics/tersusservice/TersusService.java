@@ -14,6 +14,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.ResultReceiver;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v4.util.Pair;
 import android.util.Log;
 
 import java.io.IOException;
@@ -107,9 +108,10 @@ public class TersusService extends Service {
         @Override
         public void handleMessage(Message input) {
 
+            final TersusString ts = new TersusString((byte[]) input.obj);
+
             switch (input.what) {
                 case TersusServiceConstants.MESSAGE_READ:
-                    final TersusString ts = new TersusString((byte[]) input.obj);
                     if (!ts.toString().isEmpty()) {
 
                         LocalBroadcastManager.getInstance(TersusService.this).sendBroadcast(
@@ -117,8 +119,6 @@ public class TersusService extends Service {
                                         .putExtra(TersusServiceConstants.TERSUS_OUTPUT, ts)
                         );
                     }
-                    break;
-                case TersusServiceConstants.MESSAGE_AVG_BASE:
                     break;
             }
         }
@@ -170,6 +170,8 @@ public class TersusService extends Service {
             mTimer.cancel();
             // The connection attempt succeeded. Perform work associated with
             // the connection in a separate thread.
+            if (mConnectedThread != null && (mConnectedThread.isAlive()
+                || mConnectedThread.isDaemon() || mConnectedThread.isInterrupted())) mConnectedThread.cancel();
             mConnectedThread = new ConnectedThread(mmSocket);
             mConnectedThread.start();
 
@@ -265,6 +267,7 @@ public class TersusService extends Service {
                 Message writtenMsg = mHandler.obtainMessage(
                         TersusServiceConstants.MESSAGE_WRITE, -1, -1, mmBuffer);
                 writtenMsg.sendToTarget();
+
             } catch (IOException e) {
                 Log.e("CONNECTED THREAD : w", "Error occurred when sending data", e);
 
@@ -298,7 +301,7 @@ public class TersusService extends Service {
 
                 final String command = intent.getStringExtra(TersusServiceConstants.TERSUS_COMMAND_STRING);
                 if (mConnectedThread != null) {
-                    mConnectedThread.write(command.getBytes());
+                    mConnectedThread.write((command + "\r\n").getBytes());
                 }
             }
         }

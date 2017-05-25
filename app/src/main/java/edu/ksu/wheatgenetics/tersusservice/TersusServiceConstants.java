@@ -25,5 +25,6 @@ interface TersusServiceConstants {
     String TERSUS_COMMAND_STRING = "edu.ksu.wheatgenetics.tersusservice.TERSUS_COMMAND_STRING";
     String TERSUS_CONNECTION = "edu.ksu.wheatgenetics.tersusservice.TERSUS_CONNECTION";
     String TERSUS_OUTPUT = "edu.ksu.wheatgenetics.tersusservice.TERSUS_OUTPUT";
+    String TERSUS_SINGLE_FIXED = "edu.ksu.wheatgenetics.tersusservice.TERSUS_SINGLE_FIXED";
     String TERSUS_DISCOVERY = "edu.ksu.wheatgenetics.terssuservice.TERSUS_DISCOVERY";
 }

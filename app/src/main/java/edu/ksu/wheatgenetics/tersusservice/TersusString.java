@@ -13,15 +13,60 @@ class TersusString implements Parcelable {
 
     private String talkerIdentifier, sentenceIdentifier;
 
-    private String nmeaSentence, satSystem, UTC, latitude, latIndicator, longitude,
-            longIndicator, qualityIndicator, numSat, HDOP, antennaAltitude,
-            antennaAltUnits, geoidalSeparation, geoidalSeparationUnits,
-            ageOfDiffCorrection, diffRefStationID, speedOverGround,
-            trackMadeGood, status, date, magneticVariation, magneticVariationIndicator,
-            T, M, N, K, trackDegreesT, trackDegreesM, speedKnots, speedKph, numMessages,
-            messageNum, satellitesInView, satelliteNum, elevationInDeg, azimuthInDegreesT,
-            SNR, selectionMode, mode, PDOP, VDOP, prn1, prn2, prn3, prn4, prn5, prn6,
-            prn7, prn8, prn9, prn10, prn11, prn12;
+    private String nmeaSentence;
+
+    private String satSystem;
+    private String UTC;
+    private String latitude;
+    private String latIndicator;
+    private String longitude;
+    private String longIndicator;
+    private String qualityIndicator;
+    private String numSat;
+    private String HDOP;
+    private String antennaAltitude;
+    private String antennaAltUnits;
+    private String geoidalSeparation;
+    private String geoidalSeparationUnits;
+    private String ageOfDiffCorrection;
+    private String diffRefStationID;
+    private String speedOverGround;
+    private String trackMadeGood;
+    private String status;
+    private String date;
+    private String magneticVariation;
+    private String magneticVariationIndicator;
+    private String T;
+    private String M;
+    private String N;
+    private String K;
+    private String trackDegreesT;
+    private String trackDegreesM;
+    private String speedKnots;
+    private String speedKph;
+    private String numMessages;
+    private String messageNum;
+    private String satellitesInView;
+    private String satelliteNum;
+    private String elevationInDeg;
+    private String azimuthInDegreesT;
+    private String SNR;
+    private String selectionMode;
+    private String mode;
+    private String PDOP;
+    private String VDOP;
+    private String prn1;
+    private String prn2;
+    private String prn3;
+    private String prn4;
+    private String prn5;
+    private String prn6;
+    private String prn7;
+    private String prn8;
+    private String prn9;
+    private String prn10;
+    private String prn11;
+    private String prn12;
 
 
     TersusString(byte[] bytes) {
@@ -619,4 +664,229 @@ class TersusString implements Parcelable {
             return new TersusString[size];
         }
     };
+
+    public String getNmeaSentence() {
+        return nmeaSentence;
+    }
+
+
+    public String getSatSystem() {
+        return satSystem;
+    }
+
+    public String getUTC() {
+        return UTC;
+    }
+
+    public String getLatitude() {
+
+        final String indicator = getLatIndicator();
+        if (indicator != null && !indicator.isEmpty()) {
+            if (indicator.equals("S"))
+                return "-" + latitude;
+        }
+        return latitude;
+    }
+
+    private String getLatIndicator() {
+        return latIndicator;
+    }
+
+    public String getLongitude() {
+
+        final String indicator = getLongIndicator();
+        if (indicator != null && !indicator.isEmpty()) {
+            if (indicator.equals("W"))
+                return "-" + longitude;
+        }
+        return longitude;
+    }
+
+    private String getLongIndicator() {
+        return longIndicator;
+    }
+
+    public String getQualityIndicator() {
+        return qualityIndicator;
+    }
+
+    public String getNumSat() {
+        return numSat;
+    }
+
+    public String getHDOP() {
+        return HDOP;
+    }
+
+    public String getAntennaAltitude() {
+        return antennaAltitude;
+    }
+
+    public String getAntennaAltUnits() {
+        return antennaAltUnits;
+    }
+
+    public String getGeoidalSeparation() {
+        return geoidalSeparation;
+    }
+
+    public String getGeoidalSeparationUnits() {
+        return geoidalSeparationUnits;
+    }
+
+    public String getAgeOfDiffCorrection() {
+        return ageOfDiffCorrection;
+    }
+
+    public String getDiffRefStationID() {
+        return diffRefStationID;
+    }
+
+    public String getSpeedOverGround() {
+        return speedOverGround;
+    }
+
+    public String getTrackMadeGood() {
+        return trackMadeGood;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    public String getMagneticVariation() {
+        return magneticVariation;
+    }
+
+    public String getMagneticVariationIndicator() {
+        return magneticVariationIndicator;
+    }
+
+    public String getT() {
+        return T;
+    }
+
+    public String getM() {
+        return M;
+    }
+
+    public String getN() {
+        return N;
+    }
+
+    public String getK() {
+        return K;
+    }
+
+    public String getTrackDegreesT() {
+        return trackDegreesT;
+    }
+
+    public String getTrackDegreesM() {
+        return trackDegreesM;
+    }
+
+    public String getSpeedKnots() {
+        return speedKnots;
+    }
+
+    public String getSpeedKph() {
+        return speedKph;
+    }
+
+    public String getNumMessages() {
+        return numMessages;
+    }
+
+    public String getMessageNum() {
+        return messageNum;
+    }
+
+    public String getSatellitesInView() {
+        return satellitesInView;
+    }
+
+    public String getSatelliteNum() {
+        return satelliteNum;
+    }
+
+    public String getElevationInDeg() {
+        return elevationInDeg;
+    }
+
+    public String getAzimuthInDegreesT() {
+        return azimuthInDegreesT;
+    }
+
+    public String getSNR() {
+        return SNR;
+    }
+
+    public String getSelectionMode() {
+        return selectionMode;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public String getPDOP() {
+        return PDOP;
+    }
+
+    public String getVDOP() {
+        return VDOP;
+    }
+
+    public String getPrn1() {
+        return prn1;
+    }
+
+    public String getPrn2() {
+        return prn2;
+    }
+
+    public String getPrn3() {
+        return prn3;
+    }
+
+    public String getPrn4() {
+        return prn4;
+    }
+
+    public String getPrn5() {
+        return prn5;
+    }
+
+    public String getPrn6() {
+        return prn6;
+    }
+
+    public String getPrn7() {
+        return prn7;
+    }
+
+    public String getPrn8() {
+        return prn8;
+    }
+
+    public String getPrn9() {
+        return prn9;
+    }
+
+    public String getPrn10() {
+        return prn10;
+    }
+
+    public String getPrn11() {
+        return prn11;
+    }
+
+    public String getPrn12() {
+        return prn12;
+    }
 }

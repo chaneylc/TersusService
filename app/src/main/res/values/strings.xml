@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">TersusService</string>
+    <string name="app_name">Tersus Interface</string>
+    <string name="tersus_connected">TersusOnline</string>
+    <string name="tersus_disconnected">TersusOffline</string>
 </resources>
